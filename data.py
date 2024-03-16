@@ -16,7 +16,7 @@ from sklearn.model_selection import train_test_split
 import lightning as L
 
 
-def tensor_norm(tensor: torch.Tensor) -> torch.Tensor:
+def tabular_norm(tensor: torch.Tensor) -> torch.Tensor:
     """
     Standartize a two dimension tensor by column (feature).
 
@@ -34,28 +34,29 @@ def tensor_norm(tensor: torch.Tensor) -> torch.Tensor:
 
 class FF_Dataset(Dataset):
     def __init__(self, xez: Tuple[pd.Dataframe],
-                 super_am=False, p=1, norm=False):
+                 super_am=False, p=1,
+                 norm=False):
         
         self.args = ['xez', 'super_am', 'p', 'norm']
         
         self.z = torch.tensor(xez[2].values)
         
         if super_am:
-            self.f = torch.tensor(xez[0].fillna(0).values)
-            self.e = torch.tensor(xez[1].fillna(0).values)
-            self.f = self.f.repeat(p, 1)
-            self.e = self.e.repeat(p, 1)
+            x = torch.tensor(xez[0].fillna(0).values)
+            e = torch.tensor(xez[1].fillna(0).values)
+            x = self.f.repeat(p, 1)
+            e = self.e.repeat(p, 1)
             self.z = self.z.repeat(p, 1)
-            self.cov = torch.normal(self.f, self.e)
+            self.covariables = torch.normal(x, e)
         else:
-            self.cov = torch.cat((torch.tensor(xez[0].fillna(0).values),
+            self.covariables = torch.cat((torch.tensor(xez[0].fillna(0).values),
                                   torch.tensor(xez[1].fillna(0).values)), dim=1)
             
         if norm:
-            self.cov = tensor_norm(self.cov)
+            self.covariables = tabular_norm(self.covariables)
 
     def __getitem__(self, idx):
-        return self.cov[idx], self.z[idx]
+        return self.covariables[idx], self.z[idx]
 
     def __len__(self):
         return len(self.z)
@@ -68,7 +69,6 @@ def make_vectors(x: torch.Tensor, e: torch.Tensor,
     
     x = torch.reshape(x, (n, 1, p))
     e = torch.reshape(e, (n, 1, p))
-    
 
     if version == 'no':
         return x
@@ -78,10 +78,20 @@ def make_vectors(x: torch.Tensor, e: torch.Tensor,
     if version == 'stack':
         return torch.cat((x, e), dim=1)
     
+def matrix_1d_norm(tensor: torch.Tensor) -> torch.Tensor:
+    sigma, mu = torch.std_mean(tensor, dim=(0, 2))
+    
+    n_channels = len(tensor[0])
+    
+    for i in range(n_channels):
+        tensor[:, i, :] = (tensor[:, i, :] - mu[i])/sigma[i]
+    return tensor
+    
 class CNN1D_Dataset(Dataset):
     def __init__(self, xez: Tuple[pd.Dataframe],
                  version=['no', 'with', 'stack'],
-                 super_am=False, p=1):
+                 super_am=False, p=1,
+                 norm=False):
 
         if super_am and version != 'no':
             raise ValueError("super and not 'no'")
@@ -95,15 +105,21 @@ class CNN1D_Dataset(Dataset):
             x = x.repeat(p, 1)
             e = e.repeat(p, 1)
             self.z = self.z.repeat(p, 1)
-            self._1d = torch.normal(x, e)
-
-        self._1d = make_vectors(x, e, version=version)
+            new_x = torch.normal(x, e)
+            self._1d = make_vectors(new_x, e, version='no')
+        else:
+            self._1d = make_vectors(x, e, version=version)
+            
+        if norm:
+            self._1d = matrix_1d_norm(self._1d)
 
     def __getitem__(self, idx):
         return self._1d[idx], self.z[idx]
 
     def __len__(self):
         return len(self.z)
+    
+
     
 class Custom_DataModule(L.LightningDataModule):
     def __init__(self, *args, xez: Tuple[pd.Dataframe],
