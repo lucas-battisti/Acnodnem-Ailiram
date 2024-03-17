@@ -33,7 +33,7 @@ def tabular_norm(tensor: torch.Tensor) -> torch.Tensor:
     return output
 
 class FF_Dataset(Dataset):
-    def __init__(self, xez: Tuple[pd.Dataframe],
+    def __init__(self, xez: Tuple[pd.core.frame.DataFrame],
                  super_am=False, p=1,
                  norm=False):
         
@@ -88,7 +88,7 @@ def matrix_1d_norm(tensor: torch.Tensor) -> torch.Tensor:
     return tensor
     
 class CNN1D_Dataset(Dataset):
-    def __init__(self, xez: Tuple[pd.Dataframe],
+    def __init__(self, xez: Tuple[pd.core.frame.DataFrame],
                  version=['no', 'with', 'stack'],
                  super_am=False, p=1,
                  norm=False):
@@ -122,7 +122,7 @@ class CNN1D_Dataset(Dataset):
 
     
 class Custom_DataModule(L.LightningDataModule):
-    def __init__(self, *args, xez: Tuple[pd.Dataframe],
+    def __init__(self, *args, xez: Tuple[pd.core.frame.DataFrame],
                  dataset_class,
                  set_size=[0.5, 0.25, 0.25], seed: int=2023,
                  batch_size:int = None, num_workers: int=None,
