@@ -138,7 +138,7 @@ class Custom_DataModule(L.LightningDataModule):
 
         if len(set_size) == 3:
             x_val, x_test = train_test_split(x_val, test_size=set_size[2] / (1 - set_size[0]),
-                                               random_state=seed)
+                                             random_state=seed)
             e_val, e_test = train_test_split(e_val, test_size=set_size[2] / (1 - set_size[0]),
                                              random_state=seed)
             z_val, z_test = train_test_split(z_val, test_size=set_size[2] / (1 - set_size[0]),
