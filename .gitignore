@@ -9,6 +9,9 @@ __pycache__/
 # CSV Files
 *.csv
 
+# Lightning Logs
+lightning_logs/
+
 # Distribution / packaging
 .Python
 build/
