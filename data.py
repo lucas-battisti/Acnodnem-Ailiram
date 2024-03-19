@@ -120,7 +120,53 @@ class CNN1D_Dataset(Dataset):
         return len(self.z)
     
 
+def make_matrices(
+    x: torch.Tensor, e: torch.Tensor,
+    K: int, t_inf: float, t_sup: float) -> torch.Tensor:
+    n = len(x)
+    p = len(x[0])
     
+    xbar = x.nanmean(dim=1)
+    xbar = xbar.reshape(n, 1, 1, 1)
+    xbar = xbar.repeat(1, 1, K, p)
+    
+    x = x.reshape(n, 1, 1, p)
+    x = torch.nan_to_num(x, float('inf'))
+    x = x.repeat(1, 1, K, 1)
+    
+    e = e.reshape(n, 1, 1, p)
+    e = torch.nan_to_num(e, 1e-6)
+    e = e.repeat(1, 1, K, 1)
+    
+    t = -t_inf + (t_inf + t_sup)/(2*K) + (t_inf + t_sup)/(K)*torch.tensor(range(K))
+    t = t.reshape(1, 1, K, 1)
+    t = t.repeat(n, 1, 1, p)
+    
+    mu_p = t + xbar
+    
+    normal = torch.distributions.normal.Normal(loc=mu_p, scale=e)
+    
+    return normal.log_prob(x).exp()
+    
+class CNN2D_Dataset(Dataset): #add norm
+    def __init__(self, xez: Tuple[pd.core.frame.DataFrame],
+                 K: int, t_inf: float, t_sup: float,
+                 norm=False):
+
+        self.z = torch.tensor(xez[2].values)
+
+        x = torch.tensor(xez[0].values)
+        e = torch.tensor(xez[1].values)
+
+        self._2d = make_matrices(x, e, K, t_inf, t_sup)
+
+    def __getitem__(self, idx):
+        return self._2d[idx], self.z[idx]
+
+    def __len__(self):
+        return len(self.z)
+
+
 class Custom_DataModule(L.LightningDataModule):
     def __init__(self, *args, xez: Tuple[pd.core.frame.DataFrame],
                  dataset_class,
