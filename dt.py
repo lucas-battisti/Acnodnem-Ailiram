@@ -4,6 +4,8 @@ import numpy as np
 
 from sklearn.model_selection import train_test_split
 
+from typing import List
+
 # %% Organizando o dataframe
 
 Dataframe = pd.read_csv('data/Dataframe2.csv')
@@ -34,11 +36,12 @@ Dataframe.to_csv('data/Dataframe_m.csv')
 
 class frame:
     def __init__(self, df,
-                 set_size=[0.5, 0.25, 0.25], seed=2023, sample_size=1.00):
+                 set_size: List[float], seed: int = 2023, sample_size: float = 1.00,
+                 exclude_flagged_photo: bool = True):
 
         df = df.sample(frac=sample_size)
 
-        if 0 == 0:
+        if exclude_flagged_photo:
             df = df[df.PhotoFlagDet == 0]
 
         df_train, df_val = train_test_split(df, test_size=(1 - set_size[0]),
@@ -114,7 +117,9 @@ class frame:
                                          'e_' in i, colnames))
         }
 
-    def features(self, features):
+    def features(self, features: List[str]):
+        
+        features = list(features)
 
         columns = []
 
@@ -124,6 +129,6 @@ class frame:
         return {
             "complete": self.df.loc[:, self.df.columns.isin(columns)],
             "train": self.train.loc[:, self.train.columns.isin(columns)],
-            "val": self.val.loc[:, self.val.columns.isin(columns)],
+            "validation": self.val.loc[:, self.val.columns.isin(columns)],
             "test": self.test.loc[:, self.test.columns.isin(columns)]
         }
