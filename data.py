@@ -37,8 +37,6 @@ class FF_Dataset(Dataset):
                  super_am=False, p=1,
                  norm=False):
         
-        self.args = ['xez', 'super_am', 'p', 'norm']
-        
         self.z = torch.tensor(xez[2].values)
         
         if super_am:
@@ -49,7 +47,10 @@ class FF_Dataset(Dataset):
             self.z = self.z.repeat(p, 1)
             self.covariables = torch.normal(x, e)
         else:
-            self.covariables = torch.cat((torch.tensor(xez[0].fillna(0).values),
+            if xez[1] is None:
+                self.covariables = torch.tensor(xez[0].fillna(0).values)
+            else:
+                self.covariables = torch.cat((torch.tensor(xez[0].fillna(0).values),
                                   torch.tensor(xez[1].fillna(0).values)), dim=1)
             
         if norm:
@@ -177,16 +178,25 @@ class Custom_DataModule(L.LightningDataModule):
 
         x_train, x_val = train_test_split(xez[0], test_size=(1 - set_size[0]),
                                           random_state=seed)
-        e_train, e_val = train_test_split(xez[1], test_size=(1 - set_size[0]),
-                                          random_state=seed)
+        if xez[1] is None:
+            e_train, e_val = None, None
+        else:
+            e_train, e_val = train_test_split(xez[1], test_size=(1 - set_size[0]),
+                                              random_state=seed)
+            
         z_train, z_val = train_test_split(xez[2], test_size=(1 - set_size[0]),
                                           random_state=seed)
 
         if len(set_size) == 3:
             x_val, x_test = train_test_split(x_val, test_size=set_size[2] / (1 - set_size[0]),
                                              random_state=seed)
-            e_val, e_test = train_test_split(e_val, test_size=set_size[2] / (1 - set_size[0]),
-                                             random_state=seed)
+            
+            if xez[1] is None:
+                e_val, e_test = None, None
+            else:
+                e_val, e_test = train_test_split(e_val, test_size=set_size[2] / (1 - set_size[0]),
+                                                 random_state=seed)
+                
             z_val, z_test = train_test_split(z_val, test_size=set_size[2] / (1 - set_size[0]),
                                              random_state=seed)
         else:
