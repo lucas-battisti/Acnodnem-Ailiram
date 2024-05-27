@@ -37,30 +37,32 @@ class FF_Dataset(Dataset):
                  extra: pd.core.frame.DataFrame = None,
                  p=1, norm=False):
         
-        self.z = torch.tensor(xez[2].values)
+        z = torch.tensor(xez[2].values)
+        self.z = z.reshape((z.numel(), 1))
         
         if xez[1] is None:
-            x = torch.tensor(xez[0].fillna(0).values)
-            
+            x = torch.tensor(xez[0].fillna(0).values)           
             e = torch.zeros(x.size()[0], x.size()[1])
+        else:
+            e = torch.tensor(xez[1].fillna(0).values)
             
         x = torch.tensor(xez[0].fillna(0).values)
-        e = torch.tensor(xez[1].fillna(0).values)
-        x = self.f.repeat(p, 1)
-        e = self.e.repeat(p, 1)
+        
+        x = x.repeat(p, 1)
+        e = e.repeat(p, 1)
         
         self.z = self.z.repeat(p, 1)
             
         if p == 1:
-            if xez[1]:
+            if xez[1] is not None:
                 self.covariables = torch.cat((x, e), dim=1)
             else:
                 self.covariables = x
         else:
             self.covariables = torch.normal(x, e)
             
-        if extra:
-            extra = torch.tensor(extra).repeat(p, 1)
+        if extra is not None:
+            extra = torch.tensor(extra.values).repeat(p, 1)
             self.covariables = torch.cat((self.covariables, extra), dim=1)
             
     def __getitem__(self, idx):
@@ -104,7 +106,8 @@ class CNN1D_Dataset(Dataset):
         if p != 1 and version != 'no':
             raise ValueError("super and not 'no'")
 
-        self.z = torch.tensor(xez[2].values)
+        z = torch.tensor(xez[2].values)
+        self.z = z.reshape((z.numel(), 1))
 
         x = torch.tensor(xez[0].fillna(0).values)
         e = torch.tensor(xez[1].fillna(0).values)
@@ -119,13 +122,13 @@ class CNN1D_Dataset(Dataset):
             new_x = torch.normal(x, e)
             self._1d = make_vectors(new_x, e, version='no')
         
-        if norm:
+        if norm is not None:
             self._1d = matrix_1d_norm(self._1d)
             
-        if extra:
-            extra = torch.tensor(extra)
+        if extra is not None:
+            extra = torch.tensor(extra.values)
             extra = torch.reshape(extra, (len(extra), 1, extra.size()[1]))
-            extra = extra.repeat(p, x.size()[1], 1)
+            extra = extra.repeat(p, self._1d.size()[1], 1)
             self._1d = torch.cat((self._1d, extra), dim=2)
 
     def __getitem__(self, idx):
@@ -178,18 +181,19 @@ class CNN2D_Dataset(Dataset):
                  K: int=None, t_inf: float=None, t_sup: float=None,
                  norm=False):
         
-        self.z = torch.tensor(xez[2].values)
+        z = torch.tensor(xez[2].values)
+        self.z = z.reshape((z.numel(), 1))
 
         x = torch.tensor(xez[0].fillna(0).values)
         e = torch.tensor(xez[1].fillna(0).values)
         
         self._2d = make_matrices(x, e, K, t_inf, t_sup)
 
-        if norm:
+        if norm is not None:
             self._2d = matrix_2d_norm(self._2d)
             
-        if extra:
-            extra = torch.tensor(extra)
+        if extra is not None:
+            extra = torch.tensor(extra.values)
             extra = torch.reshape(extra, (len(extra), 1, 1, extra.size()[1]))
             extra = extra.repeat(1, x.size()[1], x.size()[3], 1)
             self._2d = torch.cat((self._2d, extra), dim=3)
@@ -208,6 +212,12 @@ class Custom_DataModule(L.LightningDataModule):
                  batch_size:int = None, num_workers: int=None,
                  **kwargs):
         super().__init__(*args)
+        
+        if xez[1] is None:
+            data = dataset_class((xez[0], xez[1], xez[2]), extra, **kwargs)
+        else:
+            data = dataset_class((xez[0], xez[1], xez[2]), extra, **kwargs)
+            
         
         data = dataset_class((xez[0], xez[1], xez[2]), extra, **kwargs)
         
